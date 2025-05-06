@@ -1,31 +1,12 @@
 from invoke import task
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import zipfile
 import shutil
 from utils import encontrar_backup_mais_recente
 import os
 import re
 from datetime import datetime
-
-@task
-def empacotar(c):
-    # Criar um backup dos arquivos do projeto
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    zip_name = f'backup_flask_{timestamp}.zip'
-    incluir = ['app', 'src', 'template', 'tasks.py']
-
-    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for item in incluir:
-            if os.path.exists(item):
-                if os.path.isdir(item):
-                    for root, _, files in os.walk(item):
-                        for f in files:
-                            path = os.path.join(root, f)
-                            zipf.write(path, arcname=os.path.relpath(path))
-                else:
-                    zipf.write(item)
-    print(f"Backup criado: {zip_name}")
 
 @task 
 def backup(c, source='.', destination='backup', dias_max=7):
@@ -57,7 +38,19 @@ def backup(c, source='.', destination='backup', dias_max=7):
     
     print(f'\n Backup criado em: {zip_filename}')
     shutil.rmtree(temp_backup_dir)
+    remover_antigos_backups(destination, dias_max)
 
+def remover_antigos_backups(pasta_backup, dias_max):
+    agora = datetime.now()
+    limite = agora - timedelta(days=int(dias_max))
+
+    for arquivo in os.listdir(pasta_backup):
+        if arquivo.endswith(".zip"):
+            caminho = os.path.join(pasta_backup, arquivo)
+            mod_time = datetime.fromtimestamp(os.path.getmtime(caminho))
+            if mod_time < limite:
+                os.remove(caminho)
+                print(f"Backup antigo removido: {arquivo}")
 
 @task
 def descompactar(c):
